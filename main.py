@@ -3,8 +3,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 from colorama import init
 
-import requests
-import subprocess
+import requests, subprocess, argparse
 init()
 
 def get_title(soup):
@@ -81,7 +80,14 @@ def get_all_chapter_content(novel_url, start_chapter, end_chapter):
     subprocess.run(['pandoc', '--from=html', '--to=epub', f'{novel_name}.html', f'--metadata=title:{title}', f'--metadata=author:{author}', f'--metadata=description:{description}', f'--metadata=language:vi', f'--epub-cover-image={cover_img_path}', f'-o{novel_name}.epub'])
 
 if(__name__ == "__main__"):
-    novel_url = "https://truyenyy.vip/truyen/dinh-cap-khi-van-lang-le-tu-luyen-ngan-nam/" 
-    get_all_chapter_content(novel_url, 1, 3)
+    # argparse
+    parser = argparse.ArgumentParser(description="Mediafire downloader")
+    parser.add_argument("url", help="truyenyy url")
+    parser.add_argument("output", help="Output directory")
+    parser.add_argument("--start", "-s", type=int, default=1, help="Start download from chapter")
+    parser.add_argument("--end", "-e", type=int, default=1000000, help="End download until chapter")
+    args = parser.parse_args()
+ 
+    get_all_chapter_content(args.url, args.start, args.end)
     print("\033[92mAll completed!")
     
