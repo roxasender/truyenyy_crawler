@@ -81,7 +81,7 @@ def get_all_chapter_content(novel_url, start_chapter, end_chapter):
 
 if(__name__ == "__main__"):
     # argparse
-    parser = argparse.ArgumentParser(description="Mediafire downloader")
+    parser = argparse.ArgumentParser(description="Truyenyy downloader")
     parser.add_argument("url", help="truyenyy url")
     parser.add_argument("output", help="Output directory")
     parser.add_argument("--start", "-s", type=int, default=1, help="Start download from chapter")
