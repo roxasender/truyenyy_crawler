@@ -4,7 +4,6 @@ from tqdm import tqdm
 from colorama import init
 
 import requests
-import pypandoc
 import subprocess
 init()
 
@@ -45,8 +44,6 @@ def append_chapter_content_to_html(content, file_path):
     with open(file_path, 'a', encoding='utf-8') as f:
         f.write(f"{content}\n")
     f.close()
-
-# def add_cover_img(cover_img_path, novel_name):
 
 def get_all_chapter_content(novel_url, start_chapter, end_chapter):
     resp_html = get(novel_url)
