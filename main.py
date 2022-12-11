@@ -5,6 +5,7 @@ from colorama import init
 
 import requests
 import pypandoc
+import subprocess
 init()
 
 def get_title(soup):
@@ -28,27 +29,24 @@ def get_metadata(url):
     author = soup.find("div", {"class": "author mb-3"}).find("a").getText()
     description = soup.find("section", {"id": "id_novel_summary"})
     cover_img_url = soup.find("a", {"class": "cover position-relative"}).img['data-src']
-    cover_img_path = './' + url.split("/")[-2] + '.png'
+    cover_img_path = url.split("/")[-2] + '.png'
     cover_img = requests.get(cover_img_url)
     with open(cover_img_path, 'wb') as f:
         for chunk in cover_img:
             f.write(chunk)
-    return (title, f'<h1>Giới thiệu</h1>\n<p>Tác giả: <i>{author}</i><p>\n' + str(description) + '\n', cover_img_path)
+    return (title, author, description, f'<h1>Giới thiệu</h1>\n<p>Tác giả: <i>{author}</i><p>\n' + str(description) + '\n', cover_img_path)
 
 def get_chapter_title(url):
     resp = get(url)
     soup = BeautifulSoup(resp, features="lxml")
     return soup.find("h1", {"class": "name"}).getText()
 
-def write_chapter_list_file(chapter_list, file_path):
-    with open(file_path, 'w') as f:
-        for chapter in chapter_list:
-            f.write(f"{chapter}\n")
-
 def append_chapter_content_to_html(content, file_path):
     with open(file_path, 'a', encoding='utf-8') as f:
         f.write(f"{content}\n")
     f.close()
+
+# def add_cover_img(cover_img_path, novel_name):
 
 def get_all_chapter_content(novel_url, start_chapter, end_chapter):
     resp_html = get(novel_url)
@@ -62,7 +60,7 @@ def get_all_chapter_content(novel_url, start_chapter, end_chapter):
     novel_name = end_chapter_url.split("/")[-2]
     novel_name_url = novel_name + '/'
 
-    (title, metadata, cover_img_path) = get_metadata(novel_url)
+    (title, author, description, metadata, cover_img_path) = get_metadata(novel_url)
 
     # delete content before append
     open(f'./{novel_name}.html', 'w').close()
@@ -83,7 +81,7 @@ def get_all_chapter_content(novel_url, start_chapter, end_chapter):
             continue
     pbar.close()
     print('Converting...')
-    pypandoc.convert_file(f'./{novel_name}.html', 'epub', 'html', extra_args=[f'--metadata=title:{title}'], outputfile=f"{novel_name}.epub")
+    subprocess.run(['pandoc', '--from=html', '--to=epub', f'{novel_name}.html', f'--metadata=title:{title}', f'--metadata=author:{author}', f'--metadata=description:{description}', f'--metadata=language:vi', f'--epub-cover-image={cover_img_path}', f'-o{novel_name}.epub'])
 
 if(__name__ == "__main__"):
     novel_url = "https://truyenyy.vip/truyen/dinh-cap-khi-van-lang-le-tu-luyen-ngan-nam/" 
