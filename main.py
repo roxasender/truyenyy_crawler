@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 from colorama import init
 
-import requests, subprocess, argparse
+import requests, subprocess, argparse, os
 init()
 
 def get_title(soup):
@@ -44,7 +44,7 @@ def append_chapter_content_to_html(content, file_path):
         f.write(f"{content}\n")
     f.close()
 
-def get_all_chapter_content(novel_url, start_chapter, end_chapter):
+def get_all_chapter_content(novel_url, start_chapter, end_chapter, step):
     resp_html = get(novel_url)
     html = Soup(resp_html)
 
@@ -60,34 +60,54 @@ def get_all_chapter_content(novel_url, start_chapter, end_chapter):
 
     # delete content before append
     open(f'./{novel_name}.html', 'w').close()
-    append_chapter_content_to_html(metadata, f'./{novel_name}.html')
+    # append_chapter_content_to_html(metadata, f'./{novel_name}.html')
 
     print(f"Downloading... \n\033[95mTotal chapter: {total_chapter}\tStart from chapter: {start_chapter}\tto chapter: {end_chapter}")
 
     pbar = tqdm( unit="chapter", total=(end_chapter - start_chapter + 1), ascii=True, desc=f'\033[93mProgress', colour="green" )
 
+    # seperate large html to multi small epub files for speed up converting performance
+    part = 1
     for chapter in range(start_chapter, end_chapter + 1):
         chapter_url = prefix_url + novel_name_url + f'chuong-{chapter}.html'
         (status, chapter_content) = get_content_html(chapter_url, chapter)
         if status is "success":
             append_chapter_content_to_html(chapter_content, f'./{novel_name}.html')
+            # convert for every %i chapters
+            if chapter % step == 0:
+                subprocess.run(['pandoc', '--from=html', '--to=epub', '--quiet', f'{novel_name}.html', f'-o{novel_name}{part}.epub'])
+                # delete content before append
+                open(f'./{novel_name}.html', 'w').close()
+                part += 1
             pbar.update(1)
         else:
             print(f"\033[91mAn error occur while getting chapter: {chapter}.")
             continue
     pbar.close()
     print('Converting...')
-    subprocess.run(['pandoc', '--from=html', '--to=epub', f'{novel_name}.html', f'--metadata=title:{title}', f'--metadata=author:{author}', f'--metadata=description:{description}', f'--metadata=language:vi', f'--epub-cover-image={cover_img_path}', f'-o{novel_name}.epub'])
+    # convert final part
+    subprocess.run(['pandoc', '--from=html', '--to=epub', '--quiet', f'{novel_name}.html', f'-o{novel_name}{part}.epub'])
+    epub_list = []
+    for i in range(1, part + 1):
+        epub_list.append(f'{novel_name}{i}.epub')
+    args = ['pandoc']
+    extra_args = ['--from=epub', '--to=epub', f'--metadata=title:{title}', f'--metadata=author:{author}', f'--metadata=description:{description}', f'--metadata=language:vi', f'--epub-cover-image={cover_img_path}', f'-o{novel_name}.epub']
+    # merge epub
+    subprocess.run(args + epub_list + extra_args)
+    # remove 
+    for item in epub_list:
+        os.remove(item)
 
 if(__name__ == "__main__"):
     # argparse
     parser = argparse.ArgumentParser(description="Truyenyy downloader")
-    parser.add_argument("url", help="truyenyy url")
-    parser.add_argument("output", help="Output directory")
-    parser.add_argument("--start", "-s", type=int, default=1, help="Start download from chapter")
+    parser.add_argument("url", type=str, help="truyenyy url")
+    # parser.add_argument("output", type=str, default=".", help="Output directory")
+    parser.add_argument("--start", "-t", type=int, default=1, help="Start download from chapter")
     parser.add_argument("--end", "-e", type=int, default=1000000, help="End download until chapter")
+    parser.add_argument("--step", "-s", type=int, default=1000000, help="Higher number require high performance")
     args = parser.parse_args()
  
-    get_all_chapter_content(args.url, args.start, args.end)
+    get_all_chapter_content(args.url, args.start, args.end, args.step)
     print("\033[92mAll completed!")
     
